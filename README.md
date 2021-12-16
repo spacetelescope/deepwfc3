@@ -11,4 +11,4 @@ Here are a list of completed models:
 
 Installation
 ------------
-`env.yml`
+`env.yml` is needed
