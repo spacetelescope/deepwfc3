@@ -43,4 +43,4 @@ welcoming community to all of our users and contributors.
 License
 -------
 
-`deeowfc3` is licensed under a 3-clause BSD style license (see the ``LICENSE.txt`` file).
+`deepwfc3` is licensed under a 3-clause BSD style license (see the ``LICENSE.txt`` file).
