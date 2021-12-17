@@ -29,7 +29,7 @@ conda env create -f environment.yml
 To activate ``deepwfc3_env``, run this line in a terminal window:
 
 ```
-conda activate wfc3_env
+conda activate deepwfc3_env
 ```
 
 At the time this was written, the environment uses Python 3.6. It's within our best interest to use the latest software available so we will look into updating our environment sometime in the future.
