@@ -1,9 +1,8 @@
 #! /usr/bin/env python
 
 """
-Load a model to predict if figure 8 ghosts appear in WFC3 images. Also contains
-utility functions for normalizing images to match ImageNet statistics and
-producing saliency maps.
+Load a model to predict if figure 8 ghosts appear in WFC3 images. Also building the model, contains 
+utility functions for producing saliency maps.
 
 Authors
 -------
@@ -28,6 +27,11 @@ or
 from utils import <functions>
 """
 
+import numpy as np
+from matplotlib import pyplot as plt
+import torch
+from torch import nn
+from torch.utils.data import Dataset, DataLoader
 
 # convenient functions
 class Flatten(nn.Module):
@@ -66,7 +70,7 @@ class Classifier(nn.Module):
         self.dropout2 = nn.Dropout(dropout)
 
         # ---- FULLY CONNECTED ----
-        neurons_flat = filters[-1] * (sub_array_size // pool**3)**2#filters[-1] * (sub_array_size // pool ** 2) ** 2 # only works with k=3, pool=1
+        neurons_flat = filters[-1] * (sub_array_size // pool**3)
         self.fc1 = nn.Linear(neurons_flat, neurons[0])
         self.fc2 = nn.Linear(neurons[0], neurons[1])
         self.fc3 = nn.Linear(neurons[1], neurons[2])
@@ -117,10 +121,9 @@ class Classifier(nn.Module):
 
 def load_wfc3_uvis_figure8_model(model_path='wfc3_uvis_figure8_model_d.torch'):
     """
-    Load model pretrained by GoogLeNet and retrained by DeepWFC3.
+    Load model pretrained by transfer learned model by DeepWFC3.
 
     
-
     Parameters
     ----------
     model_path : string
@@ -128,11 +131,10 @@ def load_wfc3_uvis_figure8_model(model_path='wfc3_uvis_figure8_model_d.torch'):
 
     Returns
     -------
-    model : torchvision.models.googlenet.GoogLeNet
-        Transfer learned GoogLeNet for WFC3 figure 8 ghosts.
+    model : return model for WFC3 figure 8 ghosts.
     """
 
-    # Load GoogLeNet from torchvision
+    # initialize model
     model = Classifier()
 
     # define loss function
@@ -146,6 +148,7 @@ def load_wfc3_uvis_figure8_model(model_path='wfc3_uvis_figure8_model_d.torch'):
     params = model.state_dict()
     pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
+    # freezing the convolution layers
     for param in model.parameters():
         if cnt < 6:
             param.requires_grad = False
