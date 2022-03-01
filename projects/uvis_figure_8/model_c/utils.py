@@ -2,8 +2,7 @@
 
 """
 Load a model to predict if figure 8 ghosts appear in WFC3 images. Also contains
-utility functions for normalizing images to match ImageNet statistics and
-producing saliency maps.
+utility functions for producing saliency maps.
 
 Authors
 -------
