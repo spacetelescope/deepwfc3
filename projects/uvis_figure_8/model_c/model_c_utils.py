@@ -1,8 +1,7 @@
 #! /usr/bin/env python
 
 """
-Load a model to predict if figure 8 ghosts appear in WFC3 images. Also contains
-utility functions for producing saliency maps.
+Load Model C to predict if figure-8 ghosts appear in WFC3 images.
 
 Authors
 -------
@@ -20,11 +19,11 @@ Use
 
 This script is intened to be used in conjunction with a jupyter notebook.
 
-%run utils.py
+%run model_c_utils.py
 
 or
 
-from utils import <functions>
+from model_c_utils import <functions>
 """
 
 import numpy as np
@@ -37,7 +36,7 @@ class Flatten(nn.Module):
     def forward(self, input):
         return input.view(input.size(0), -1)
 
-class Classifier(nn.Module):
+class Model_C(nn.Module):
     def __init__(self,
                  filters = [1, 32, 32, 8], # most people use powers of 2
                  neurons = [16, 8, 2],
@@ -46,7 +45,7 @@ class Classifier(nn.Module):
                  pool = 2,              # pooling size (2x2)
                  pad = 1):
 
-        super(Classifier, self).__init__()
+        super(Model_C, self).__init__()
 
         # The Rectified Linear Unit (ReLU)
         self.relu = nn.ReLU()
@@ -78,8 +77,6 @@ class Classifier(nn.Module):
 
 
         self.dropout1 = nn.Dropout(0.2)
-
-
 
     def forward(self,x):
 
@@ -118,12 +115,11 @@ class Classifier(nn.Module):
 
         return x
 
-
-def load_wfc3_uvis_figure8_model(model_path='wfc3_uvis_figure8_model_c.torch'):
+def load_wfc3_fig8_model_c(model_path='wfc3_fig8_model_c.torch'):
     """
     Construct the model C six layer CNN.  Freeze all layers
 
-    Load the weights and biases trained of WFC3 figure 8 ghosts and change model
+    Load the weights and biases trained of WFC3 figure-8 ghosts and change model
     to eval mode (turns off gradients).
 
     Parameters
@@ -133,12 +129,12 @@ def load_wfc3_uvis_figure8_model(model_path='wfc3_uvis_figure8_model_c.torch'):
 
     Returns
     -------
-    model : Classifier
-        Transfer learned CNN for WFC3 figure 8 ghosts.
+    model : Model_C
+        Transfer learned CNN for WFC3 figure-8 ghosts.
     """
 
     # Construct network without trained weights
-    model = Classifier()
+    model = Model_C()
 
     # Freeze layers
     for param in model.parameters():
@@ -149,69 +145,3 @@ def load_wfc3_uvis_figure8_model(model_path='wfc3_uvis_figure8_model_c.torch'):
     model.eval()
 
     return model
-
-
-
-def saliency_map(model, image, plot=True):
-
-    """Plot a subframe and saliency map the model produces.
-
-    Parameters
-    ----------
-    model : nn.Module
-        Trained CNN after a given number of epochs.
-
-    image : numpy array
-        A processed UVIS image.
-
-    plot : boolean
-        If True, plot image and saliency map.
-
-    Returns
-    -------
-    sal_map : array like
-        The saliency map produced by the model from the input image.
-
-    """
-
-    # Rename image and label
-    X = torch.Tensor(image.reshape(1,1,256,256))
-
-    # Change model to evaluation mode and activate gradient
-    model.eval()
-    X.requires_grad_()
-
-    # Evaluate image and perform backwards propogation
-    scores = model(X)
-    score_max_index = scores.argmax()
-    score_max = scores[0,score_max_index]
-    score_max.backward()
-
-    # Calculate saliency map
-    saliency, _ = torch.max(X.grad.data.abs(),dim=1)
-    sal_map = saliency[0]
-
-    softmax = torch.nn.Softmax(dim=1)
-
-    # Plot
-    if plot:
-
-        # Display probabilities
-        prob = softmax(scores).detach().numpy().flatten()
-        print ('Null Probability: {:.4f}'.format(prob[0]))
-        print ('Figure 8 Probability: {:.4f}'.format(prob[1]))
-        print ('Prediction: {}'.format(score_max_index))
-
-        # Plot image and saliency map
-        fig, axs = plt.subplots(1, 2, figsize=[24,12])
-        axs[0].set_title('Input Image', fontsize=20)
-        axs[0].imshow(X[0, 0].detach().numpy(), cmap='gray', origin='lower')
-        axs[0].tick_params(axis='both', which='major', labelsize=20)
-
-        axs[1].set_title('Saliency Map', fontsize=20)
-        axs[1].imshow(sal_map, cmap=plt.cm.hot, origin='lower')
-        axs[1].tick_params(axis='both', which='major', labelsize=20)
-
-        plt.show()
-
-    return sal_map.numpy()
