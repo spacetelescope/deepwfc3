@@ -1,8 +1,39 @@
+#! /usr/bin/env python
+
+"""
+Load Model B to predict if figure-8 ghosts appear in WFC3 images.
+
+Authors
+-------
+
+Members of DeepWFC3 2022
+
+    Frederick Dauphin
+    Mireia Montes
+    Nilufar Easmin
+    Varun Bajaj
+    Peter McCullough
+
+Use
+---
+
+This script is intened to be used in conjunction with a jupyter notebook.
+
+%run model_b_utils.py
+
+or
+
+from model_b_utils import <functions>
+"""
+
 import numpy as np
 from matplotlib import pyplot as plt
 
 import torch
 from torch import nn
+
+from sklearn import metrics
+import seaborn as sns
 
 
 def process_image(image):
@@ -12,7 +43,7 @@ class Flatten(nn.Module):
     def forward(self, input):
         return input.view(input.size(0), -1)
 
-class Classifier(nn.Module):
+class Model_B(nn.Module):
     def __init__(self,
                  filters = [1, 16, 32, 64], # most people use powers of 2
                  neurons = [16, 32, 32, 2],  # neurons of fully connected layer
@@ -21,7 +52,7 @@ class Classifier(nn.Module):
                  pool = 2,                  # pooling size (2x2)
                  pad = 1):
 
-        super(Classifier, self).__init__()
+        super(Model_B, self).__init__()
 
         # The Rectified Linear Unit (ReLU)
         self.relu = nn.ReLU()
@@ -90,12 +121,8 @@ class Classifier(nn.Module):
 
         return x
 
-
-
-
 def confusion_matrix(model, image_set, labels):
-    from sklearn import metrics
-    import seaborn as sns
+
     """Calculate and plot confusion matrix of model given image set and labels.
 
     Parameters
@@ -103,23 +130,23 @@ def confusion_matrix(model, image_set, labels):
     model : nn.Module
         Trained CNN after a given number of epochs.
 
-    image_set : numpy array
-        A dataset containing processed IR subframes.
+    image_set : numpy.array
+        A dataset containing processed WFC3/UVIS images.
 
-    labels : numpy array
+    labels : numpy.array
         Labels corresponding to the image set.
 
     Returns
     -------
-    outputs : torch Tensor
+    outputs : torch.Tensor
         The output neurons of the CNN.
 
-    predictions : numpy array
+    predictions : numpy.array
         Predictions made by the model corresponding to the image set.
 
     confusion_matrix : array like
-        A confusion matrix of the model with predicted labels on the x axis and
-        true labels on the y axis.
+        A confusion matrix of the model with predicted labels on the x-axis and
+        true labels on the y-axis.
 
     """
 
@@ -144,84 +171,11 @@ def confusion_matrix(model, image_set, labels):
 
     return outputs, predictions, confusion_matrix
 
-
-
-
-def saliency_map(model, image):
-
-    """Plot a subframe and saliency map the model produces.
-
-    Parameters
-    ----------
-    model : nn.Module
-        Trained CNN after a given number of epochs.
-
-    image : numpy array
-        A processed IR subframe.
-
-    label : float, integer, string
-        Label corresponding to the image.
-
-    index : integer
-        Index corresponding to the image and label
-
-    Returns
-    -------
-    sal_map : array like
-        The saliency map produced by the model from the input image.
-
-    """
-    from matplotlib.colors import LogNorm
-    # Rename image and label
-    X = torch.Tensor(image.reshape(1,1,256,256))
-    #Y = label
-    # Change model to evaluation mode and activate gradient
-    model.eval()
-    X.requires_grad_()
-
-    # Evaluate image and perform backwards propogation
-    scores          = model(X)
-    score_max_index = scores.argmax()
-    score_max       = scores[0,score_max_index]
-    score_max.backward()
-
-    # Calculate saliency map
-    saliency, _ = torch.max(X.grad.data.abs(),dim=1)
-    sal_map     = saliency[0]
-
-    softmax = torch.nn.Softmax(dim = 1)
-    prob    = softmax(scores).detach().numpy().flatten()
-
-    # if Y == float:
-    #     print ('True Label: {}'.format(int(Y)))
-    # else:
-    #     print ('True Label: {}'.format(Y))
-
-    print ('Predicted label: {}'.format(score_max_index))
-    print ('Figure 8 probability: {}'.format(prob[1]))
-    print ('')
-
-
-    # Plot image and saliency map
-    fig, axs = plt.subplots(1, 2, figsize=[16,8])
-    axs[0].set_title('Input Image', fontsize = 20)
-    axs[0].imshow(X[0, 0].detach().numpy(), cmap='Greys', origin = 'lower')
-    axs[0].tick_params(axis = 'both', which = 'major', labelsize = 20)
-
-    axs[1].set_title('Saliency Map', fontsize = 20)
-    axs[1].imshow(sal_map, cmap=plt.cm.hot, origin = 'lower')
-    axs[1].tick_params(axis = 'both', which = 'major', labelsize = 20)
-    plt.show()
-
-
-    return sal_map
-
-
-def load_wfc3_fig8_modelb(model_file):
+def load_wfc3_fig8_model_b(model_file):
     """
     Function to load the model B.
-    First loads the model class (architecture). Then it loads the parameters of the trained model in model_file
-    and changes it to evaluation mode.
+    First loads the model class (architecture). Then it loads the parameters of
+    the trained model in model_file and changes it to evaluation mode.
 
     Parameters
     -------
@@ -230,10 +184,10 @@ def load_wfc3_fig8_modelb(model_file):
 
     Returns
     -------
-    model :
-        Model for classification of WFC3 Fig 8 ghost images.
+    model : Model_B
+        Model for classification of WFC3 Figure-8 ghost images.
     """
-    model = Classifier()
+    model = Model_B()
     model.load_state_dict(torch.load(model_file))
     model.eval()
 
