@@ -107,7 +107,7 @@ class Model_Synthetic(nn.Module):
 
         return x
 
-def load_wfc3_uvis_figure8_model_syn(model_path='wfc3_uvis_figure8_model_syn.torch'):
+def load_wfc3_fig8_model_syn(model_path='wfc3_fig8_model_syn.torch'):
     """
     Load model trained on synthetic figure-8 ghost images and change model to eval mode (turns off gradients).
 
@@ -118,7 +118,7 @@ def load_wfc3_uvis_figure8_model_syn(model_path='wfc3_uvis_figure8_model_syn.tor
 
     Returns
     -------
-    model : torch model
+    model : Model_Synthetic
         Model with pretrained weights.
     """
 
