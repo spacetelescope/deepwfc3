@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 
 """
-Load a model to predict if figure 8 ghosts appear in WFC3 images. Also contains
+Load Model A to predict if figure-8 ghosts appear in WFC3 images. Also contains
 utility functions for normalizing images to match ImageNet statistics and
 producing saliency maps.
 
@@ -21,11 +21,11 @@ Use
 
 This script is intened to be used in conjunction with a jupyter notebook.
 
-%run utils.py
+%run model_a_utils.py
 
 or
 
-from utils import <functions>
+from model_a_utils import <functions>
 """
 
 import numpy as np
@@ -71,8 +71,7 @@ def process_image(image):
 
     return image_processed
 
-def load_wfc3_uvis_figure8_model_a(
-model_path='wfc3_uvis_figure8_model_a.torch'):
+def load_wfc3_fig8_model_a(model_path='wfc3_fig8_model_a.torch'):
     """
     Load model pretrained by GoogLeNet and retrained by DeepWFC3.
 
@@ -80,7 +79,7 @@ model_path='wfc3_uvis_figure8_model_a.torch'):
     neuron layers with dropout rates of 0.5 and ReLU activation. Additionally
     append one 2 neuron layer with a dropout rate of 0.2. Unfreeze the fully connected layers.
 
-    Load the weights and biases trained of WFC3 figure 8 ghosts and change model
+    Load the weights and biases trained of WFC3 figure-8 ghosts and change model
     to eval mode (turns off gradients).
 
     Parameters
@@ -91,7 +90,7 @@ model_path='wfc3_uvis_figure8_model_a.torch'):
     Returns
     -------
     model : torchvision.models.googlenet.GoogLeNet
-        Transfer learned GoogLeNet for WFC3 figure 8 ghosts.
+        Transfer learned GoogLeNet for WFC3 figure-8 ghosts.
     """
 
     # Load GoogLeNet from torchvision
@@ -146,12 +145,9 @@ def saliency_map(model, image, plot=True):
         The saliency map produced by the model from the input image.
 
     """
-
-    # Transform image to a torch.Tensor
-    channel_dim, y_dim, x_dim = image.shape
-    X = torch.Tensor(image.reshape(1,3,224,224))
-
+    
     # Change model to evaluation mode and activate gradient
+    X = image
     model.eval()
     X.requires_grad_()
 
@@ -171,7 +167,7 @@ def saliency_map(model, image, plot=True):
         # Display probabilities
         prob = softmax(scores).detach().numpy().flatten()
         print ('Null Probability: {:.4f}'.format(prob[0]))
-        print ('Figure 8 Probability: {:.4f}'.format(prob[1]))
+        print ('Figure-8 Probability: {:.4f}'.format(prob[1]))
         print ('Prediction: {}'.format(score_max_index))
 
         # Plot image and saliency map
