@@ -71,7 +71,8 @@ def process_image(image):
 
     return image_processed
 
-def load_wfc3_uvis_figure8_model(model_path='googlenet_fig8_deep.torch'):
+def load_wfc3_uvis_figure8_model_a(
+model_path='wfc3_uvis_figure8_model_a.torch'):
     """
     Load model pretrained by GoogLeNet and retrained by DeepWFC3.
 
@@ -126,7 +127,6 @@ def load_wfc3_uvis_figure8_model(model_path='googlenet_fig8_deep.torch'):
 softmax = torch.nn.Softmax(dim=1)
 
 def saliency_map(model, image, plot=True):
-
     """Plot a subframe and saliency map the model produces.
 
     Parameters
@@ -147,7 +147,8 @@ def saliency_map(model, image, plot=True):
 
     """
 
-    # Rename image and label
+    # Transform image to a torch.Tensor
+    channel_dim, y_dim, x_dim = image.shape
     X = torch.Tensor(image.reshape(1,3,224,224))
 
     # Change model to evaluation mode and activate gradient
