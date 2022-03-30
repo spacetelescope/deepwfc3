@@ -1,1 +1,1 @@
-Model A used the [GoogLeNet architecture](https://arxiv.org/pdf/1409.4842.pdf) pretrained on ImageNet and retrained using WFC3 Figure 8 Ghost data as described in (insert ISR name here).
+Model A used the [GoogLeNet architecture](https://arxiv.org/pdf/1409.4842.pdf) pretrained on ImageNet and retrained using WFC3 Figure 8 Ghost data as described in [WFC3-ISR 2022-03](https://www.stsci.edu/files/live/sites/www/files/home/hst/instrumentation/wfc3/documentation/instrument-science-reports-isrs/_documents/2022/WFC3-ISR-2022-03.pdf).

@@ -1,1 +1,1 @@
-Model D uses a seven-layer network with three convolutional layers and four fully connected layers (see [insert ISR here]]). Just like Model C, Model D initially trained and validated on synthetic data sets, and transfer learned on a combination of the synthetic and real data. 
+Model D uses a seven-layer network with three convolutional layers and four fully connected layers. Just like Model C, Model D initially trained and validated on synthetic data sets, and transfer learned on a combination of the synthetic and real data. 
