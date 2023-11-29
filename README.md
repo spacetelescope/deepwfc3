@@ -5,6 +5,7 @@ DeepWFC3: Analyzing HST/WFC3 Images using Machine Learning
 
 Here is a list of the completed models:
 - WFC3/IR Blob Classification using Convolutional Neural Networks (CNNs) ([WFC3-ISR 2021-08](https://www.stsci.edu/files/live/sites/www/files/home/hst/instrumentation/wfc3/documentation/instrument-science-reports-isrs/_documents/2021/WFC3-2021-08.pdf))
+    - This repository supersedes [the original repository](https://github.com/spacetelescope/wfc3_ir_blob_class).
 - WFC3/UVIS Figure 8 Classification using CNNs ([WFC3-ISR 2022-03](https://www.stsci.edu/files/live/sites/www/files/home/hst/instrumentation/wfc3/documentation/instrument-science-reports-isrs/_documents/2022/WFC3-ISR-2022-03.pdf))
 
 In addition, we have some tutorials for implementing more advanced machine learning models in [PyTorch](https://pytorch.org/) and [`scikit-learn`](https://scikit-learn.org/stable/), our preferred machine learning libraries. Note the tutorials assume the user is familiar with machine learning basic vocabulary and methodology. They **DO NOT** act as a course for machine learning in general, but as a reference for implementing these models.
