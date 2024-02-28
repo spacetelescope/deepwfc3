@@ -147,7 +147,7 @@ def process_augment(fpath):
 
     Returns
     --------
-        none
+    None
 
     '''
     # Get the rootname of the image:
@@ -184,7 +184,7 @@ def main(file_name):
 
     Returns
     --------
-        none
+    None
     '''
     # Read in csv file as dataframe
     df = pd.read_csv(file_name)
@@ -204,7 +204,7 @@ def main(file_name):
     total = len(image_locations)
     # pooling image processing
     cpu_count = int(0.75*(os.cpu_count()))
-    pool = Pool(cpu_count())
+    pool = Pool(cpu_count)
     list(tqdm.tqdm(pool.imap(process_augment, image_locations), total=total))
     pool.close()
     pool.join()
