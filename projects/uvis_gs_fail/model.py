@@ -3,8 +3,7 @@ import torch
 from torch import nn
 
 class Model(nn.Module):
-    ''' Define the convolutional neural network (CNN) model architecture to 
-    train on.
+    ''' Define the convolutional neural network model architecture and methods.
     
     The CNN defined in this class has four convolutional layers, and two fully 
     connected layers that have the following characteristics:
