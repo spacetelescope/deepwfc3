@@ -80,6 +80,56 @@ def get_data(path_list, label):
     # Return tuples of the arrays of image data
     return (non_aug_images, y_non_aug), (augmented_images, y_aug)
 
+def short_data(path, n_data, data_cat, dtime, metric_dir):
+    ''' Load in shortened version of nominal data sets.
+
+    Create a list of paths to nominal images in a data set and then save the
+    randomly chosen indices to a .txt file that in the same directory as the 
+    model parameters and evaluations.
+
+    Parameters
+    -----------
+    path : string
+        The directory that the images are stored in.
+    n_data : int or float
+        The length of the data set being processed.
+    data_cat : string
+        The type of data being processed. Allowed values are 'test' and 'train'.
+    dtime : string
+        The data and time that the data is being processed.
+    metric_dir : string
+        The directory to save the indices of the images used in training and 
+        validation.
+
+    Returns
+    --------
+    naug_x : array
+        The non augmented data set.
+    naug_y : array
+        The labels for the non augmented data.
+    aug_x : array
+        The augmented data set.
+    aug_y : array
+        The labels for the augmented data.
+    '''
+
+    # Get the list of paths
+    data_paths = np.array(glob.glob(f'{path}/{data_cat}/nominal/*.npz')) 
+    # Array of indices the length of the path list
+    path_ind = np.arange(len(data_paths), dtype=int) 
+    # Shuffle the indices
+    np.random.shuffle(path_ind)
+    # Get indices to use (first n)
+    ind_list = path_ind[:n_data] 
+    # Get the paths from the path list
+    data_short = data_paths[path_ind[:n_data]] 
+
+    # Load in the data corresponding to the paths we just pulled:
+    (naug_x, naug_y),(aug_x, aug_y) = get_data(data_short, 'nominal')
+    np.savetxt(f'{metric_dir}/{data_cat}_indices_{dtime}.txt', ind_list) 
+
+    return (naug_x, naug_y), (aug_x, aug_y)
+
 def organize_data(path, metric_dir):
     ''' Pull and label data to use in model training.
 
@@ -97,7 +147,7 @@ def organize_data(path, metric_dir):
         The directory that the images are stored in.
     metric_dir : string
         The directory to save the indices of the images used in training and 
-        validation sets and model evaluation metrics to.
+        validation.
 
     Returns
     --------
@@ -106,6 +156,7 @@ def organize_data(path, metric_dir):
     non_augmented_data : list
         The non-augmented training and validation data sets with labels.
     '''
+
     T = datetime.datetime.now()
     dtime = T.strftime('%Y_%m_%d_%H-%M')
 
@@ -123,38 +174,14 @@ def organize_data(path, metric_dir):
                                                    get_data(test_GS_paths, 'GS')
     print('GS fail data loaded')
     
-    # List of training paths
-    paths_train = np.array(glob.glob(f'{path}/training/nominal/*.npz')) 
-    # Array of indices the length of the path list
-    train_ind = np.arange(len(paths_train), dtype=int) 
-    # Shuffle the indices
-    np.random.shuffle(train_ind)
-    # Get indices to use (first n)
-    train_ind_list = train_ind[:n_train] 
-    # Get the paths from the path list
-    train_data_short = paths_train[train_ind[:n_train]] 
-
     # Load the nominal data for the paths we just pulled:
     (trainnom_naug_x, trainnom_naug_y),(trainnom_aug_x, trainnom_aug_y) = \
-                                           get_data(train_data_short, 'nominal')
-    np.savetxt(f'{metric_dir}/train_indices_{dtime}.txt', train_ind_list) 
-    print('Loaded shortened training data')
-
-    # List of validation paths
-    paths_test = np.array(glob.glob(f'{path}/test/nominal/*.npz'))
-    # Create an array of indices
-    test_indices = np.arange(len(paths_test), dtype=int) 
-    # Shuffle the indices
-    np.random.shuffle(test_indices)
-    # Get indices to use (first n)
-    test_ind_list = test_indices[:n_test]
-    # Get the paths from the path list
-    test_data_short = paths_test[test_indices[:n_test]]
+                           short_data(path, n_train, 'train', dtime, metric_dir)
+    print('Loaded short training data')
 
     (testnom_naug_x, testnom_naug_y),(testnom_aug_x, testnom_aug_y) = \
-                                            get_data(test_data_short, 'nominal')
-    np.savetxt(f'{metric_dir}/test_indices_{dtime}.txt', test_ind_list) 
-    print('Loaded shortened validation data')
+                             short_data(path, n_test, 'test', dtime, metric_dir)
+    print('Loaded short test data')
 
     # Organize the augmented and non-augmented data
     # Training sets
@@ -218,9 +245,9 @@ def save_model_metrics(metrics, model, data_type, metric_dir):
     data_type : string
         The type of data the model will train on.
     metric_dir : string
-        The directory to save the indices of the images used in training and 
-        validation sets and model evaluation metrics to.
-
+        The directory to save the model's evaluation metrics to. Allowed values 
+        are 'no_aug' and 'aug'.
+    
     Returns 
     --------
     metric_data : list
@@ -236,8 +263,7 @@ def save_model_metrics(metrics, model, data_type, metric_dir):
     val_data = np.array(metrics[2])
     
     val_df = pd.DataFrame(np.transpose(val_data), columns=val_metric_names)
-    train_df = pd.DataFrame(np.transpose(train_data), \
-                                                     columns=train_metric_names)
+    train_df = pd.DataFrame(np.transpose(train_data), columns=train_metric_names)
 
     # save to csv file
     val_df.to_csv(f'{metric_dir}/val_model_{data_type}_{dtime}.csv') 
@@ -347,7 +373,7 @@ def validate_model(valid_loader):
     Parameters
     ----------
     valid_loader : Torch tensor
-        The images and labels.
+        The validation images and labels.
 
     Returns 
     -------
@@ -448,14 +474,14 @@ def main(path, metric_dir, data_type):
         x_test = non_augmented_data[2]
         y_test = non_augmented_data[3]
 
-    # Dimensions for Model:
+    # Info for Model:
     x_train_size = x_train.shape[0]
     x_test_size = x_test.shape[0]
     x_length = x_train.shape[1]
 
     print('x_length = ', x_length)
 
-    print('Image info being used in model:')
+    print('Image info being used:')
     print(x_train_size, x_test_size, x_length)
     
     # Format the dataset:
@@ -485,6 +511,7 @@ def main(path, metric_dir, data_type):
 
     ############ TRAINING AND VALIDATION ############
     # Track metrics:
+    # Loss
     training_loss = []
     valid_loss = []
     # Accuracy
@@ -499,23 +526,21 @@ def main(path, metric_dir, data_type):
     # fscore
     val_f1 = []
     train_f1 = []
-    # Epoch training time
+    # epoch time
     epoch_time = []
 
     # Training loop:
     for epoch in tqdm(range(num_epochs), total=num_epochs):
 
-        # Start recording time
         t0 = time.time()
         # Go through loops
         train_loss, train_acc, train_prec, train_rec, train_fscore = \
                                                        train_model(train_loader)
         val_loss, accuracy, precision, recall, fscores = \
                                                     validate_model(valid_loader)
-        # Stop recording time
         t1 = time.time()
 
-        # Calculate time for the epoch
+        # Time for epoch to train.
         dt = t1 - t0
         epoch_time.append(dt)
 
@@ -536,13 +561,13 @@ def main(path, metric_dir, data_type):
         val_f1.append(fscores)
         train_f1.append(train_fscore)
 
-        # Log training metrics
+        # Log training
         print('Epoch {:.3f} - Train loss: {:.3f} - Val Loss: {:.3f} - Accuracy:\
                        ({:.0f}%)'.format(epoch, train_loss, val_loss, accuracy))
         
         # Every 10 epochs save model
         if (epoch % 10 == 0):
-            # Save model params to specified directory:
+            # save model to specified directory:
             torch.save(model.state_dict(), f'{metric_dir}/model_epoch{epoch}_\
                                                         {data_type}_{dtime}.pt')
 
