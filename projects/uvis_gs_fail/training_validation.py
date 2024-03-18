@@ -1,4 +1,10 @@
 # imports:
+import time
+import datetime
+import glob
+import sys
+import os
+
 import numpy as np
 from tqdm import tqdm
 import torch
@@ -6,35 +12,31 @@ from torch import nn
 from torch.utils.data import Dataset, DataLoader
 from sklearn.metrics import precision_recall_fscore_support
 import pandas as pd
-import datetime
-import time
-import glob
-import sys
 
 # Import the model class:
 from model import Model
 
 # Define functions:
-def get_data(path_list,label):
+def get_data(path_list, label):
     '''Load in an array of images and create labels for each.
 
     Takes in a list of image paths, loads each image file, and creates arrays
-    of augmented and augmented data. Also creates arrays of labels for the set
-    of images.
+    of non augmented and augmented data. Also creates arrays of labels for the 
+    set of images.
 
     Parameters
     -----------
     path_list : list or array
-        The strings that identify the directory that each image is located in.
+        The paths to each image.
     label : string
-        What type of data is being processed (GS or nominal).
+        The type of data being processed. Allowed values are 'GS' and 'nominal'.
     
     Returns 
     --------
     non_aug_images : array
-        The non-augmented image data.
+        The non-augmented images.
     y_non_aug : array
-        The labels for the non-augmented image data.
+        The labels for the non-augmented images.
     augmented_images : array
         The augmented images.
     y_aug : array
@@ -44,12 +46,13 @@ def get_data(path_list,label):
     non_aug_images = []
     aug_images = []
     
-    # Bool to only pull one aug if label == nominal
     for file in tqdm(path_list):
         full_info = np.load(file)
         non_aug = full_info['no_aug']
         non_aug_images.append(non_aug)
         aug = full_info['aug']
+
+        # Bool to only load one aug image if label == nominal
         if label == 'GS':
             aug_images.append(aug)
         elif label == 'nominal':
@@ -72,7 +75,8 @@ def get_data(path_list,label):
         y_non_aug = np.zeros(len(non_aug_images))
         y_aug = np.zeros(len(augmented_images))
     
-    print('finished loading data for: ', path_list[0])
+    print(f'finished loading data for: {os.path.dirname(path_list[0])}')
+
     # Return tuples of the arrays of image data
     return (non_aug_images, y_non_aug), (augmented_images, y_aug)
 
@@ -80,7 +84,8 @@ def organize_data(path, metric_dir):
     ''' Pull and label data to use in model training.
 
     Pulls random indices of training and validation data and organizes them into
-    arrays of x (examples) and y (labels) data to prepare for model training.
+    arrays of x (samples or features) and y (labels) data to prepare for model 
+    training.
 
     Saves the indices pulled from the directories in a file in the directory 
     specified by 'metric_dir'. Assumes that 'path' has the subdirectories 
@@ -92,7 +97,7 @@ def organize_data(path, metric_dir):
         The directory that the images are stored in.
     metric_dir : string
         The directory to save the indices of the images used in training and 
-        validation in.
+        validation sets and model evaluation metrics to.
 
     Returns
     --------
@@ -111,52 +116,55 @@ def organize_data(path, metric_dir):
     test_GS_paths = glob.glob(f'{path}/test/GS/*.npz')
     n_test = int((len(test_GS_paths))*10)
 
-    # Load up the GS fail data:
+    # Load the GS fail data:
     (trainGS_naug_x, trainGS_naug_y),(trainGS_aug_x, trainGS_aug_y) = \
                                                   get_data(train_GS_paths, 'GS')
     (testGS_naug_x, testGS_naug_y),(testGS_aug_x,testGS_aug_y) = \
                                                    get_data(test_GS_paths, 'GS')
     print('GS fail data loaded')
     
-    # list of paths
+    # List of training paths
     paths_train = np.array(glob.glob(f'{path}/training/nominal/*.npz')) 
-    # array of indeces the length of the path list
+    # Array of indices the length of the path list
     train_ind = np.arange(len(paths_train), dtype=int) 
     # Shuffle the indices
     np.random.shuffle(train_ind)
     # Get indices to use (first n)
     train_ind_list = train_ind[:n_train] 
-    # Pull the from the path list
+    # Get the paths from the path list
     train_data_short = paths_train[train_ind[:n_train]] 
 
     # Load the nominal data for the paths we just pulled:
     (trainnom_naug_x, trainnom_naug_y),(trainnom_aug_x, trainnom_aug_y) = \
                                            get_data(train_data_short, 'nominal')
     np.savetxt(f'{metric_dir}/train_indices_{dtime}.txt', train_ind_list) 
-    print('Loaded short training data')
+    print('Loaded shortened training data')
 
+    # List of validation paths
     paths_test = np.array(glob.glob(f'{path}/test/nominal/*.npz'))
-    # create an array of indices
+    # Create an array of indices
     test_indices = np.arange(len(paths_test), dtype=int) 
     # Shuffle the indices
-    np.random.shuffle(test_indices) 
+    np.random.shuffle(test_indices)
+    # Get indices to use (first n)
     test_ind_list = test_indices[:n_test]
+    # Get the paths from the path list
     test_data_short = paths_test[test_indices[:n_test]]
 
-    (testnom_naug_x, testnom_naug_y),(testnom_aug_x,testnom_aug_y) = \
+    (testnom_naug_x, testnom_naug_y),(testnom_aug_x, testnom_aug_y) = \
                                             get_data(test_data_short, 'nominal')
-    np.savetxt(f'{metric_dir}/test_indices_{dtime}.txt',test_ind_list) 
-    print('Loaded short test data')
+    np.savetxt(f'{metric_dir}/test_indices_{dtime}.txt', test_ind_list) 
+    print('Loaded shortened validation data')
 
-    # organize the augmented and non-augmented data
-    # training sets
+    # Organize the augmented and non-augmented data
+    # Training sets
     trainx_no_aug = np.concatenate((trainnom_naug_x,trainGS_naug_x))
     trainy_no_aug = np.concatenate((trainnom_naug_y,trainGS_naug_y))
 
     trainx_aug = np.concatenate((trainnom_aug_x,trainGS_aug_x))
     trainy_aug = np.concatenate((trainnom_aug_y,trainGS_aug_y))
 
-    # test sets:
+    # Test sets:
     testx_no_aug = np.concatenate((testnom_naug_x,testGS_naug_x))
     testy_no_aug = np.concatenate((testnom_naug_y,testGS_naug_y))
 
@@ -175,6 +183,7 @@ def format_dataset(image_set, labels, size):
 
     Reshapes the inpupt data to an array of size (1, image_size, image_size).
     Appends reshaped image array and the corresponding label to a list.
+
     Parameters
     -----------
     image_set : array
@@ -194,7 +203,7 @@ def format_dataset(image_set, labels, size):
         data_set.append([image_set[i].reshape(1,size,size), labels[i]])  
     return data_set
 
-def save_model_metrics(metrics,model, data_type, metric_dir):
+def save_model_metrics(metrics, model, data_type, metric_dir):
     ''' Saves the training and validation metrics for the model to a directory.
 
     Take in a list of model metric dataframes and save them to a specified
@@ -207,10 +216,11 @@ def save_model_metrics(metrics,model, data_type, metric_dir):
     model : nn.Module
         The model that was trained.
     data_type : string
-        The type of data the model trained on.
+        The type of data the model will train on.
     metric_dir : string
-        The directory to save the model's metrics to.
-    
+        The directory to save the indices of the images used in training and 
+        validation sets and model evaluation metrics to.
+
     Returns 
     --------
     metric_data : list
@@ -225,17 +235,18 @@ def save_model_metrics(metrics,model, data_type, metric_dir):
     train_data = np.array(metrics[1])
     val_data = np.array(metrics[2])
     
-    val_df = pd.DataFrame(np.transpose(val_data),columns=val_metric_names)
-    train_df = pd.DataFrame(np.transpose(train_data),columns=train_metric_names)
+    val_df = pd.DataFrame(np.transpose(val_data), columns=val_metric_names)
+    train_df = pd.DataFrame(np.transpose(train_data), \
+                                                     columns=train_metric_names)
 
     # save to csv file
     val_df.to_csv(f'{metric_dir}/val_model_{data_type}_{dtime}.csv') 
     train_df.to_csv(f'/{metric_dir}/train_model_{data_type}_{dtime}.csv') 
     
     # save model:
-    torch.save(model.state_dict(),f'{metric_dir}/final_model_{data_type}_\
+    torch.save(model.state_dict(), f'{metric_dir}/final_model_{data_type}_\
                                                                     {dtime}.pt') 
-    metric_data = [train_df,val_df]
+    metric_data = [train_df, val_df]
 
     return metric_data
 
@@ -246,13 +257,6 @@ class LoadDataset(Dataset):
     ----------
     Dataset : array
         The dataset that needs to be reformatted.
-    
-    Returns
-    -------
-    image : torch object
-        The reformatted images.
-    label : torch object
-        The reformatted labels.
     '''
     def __init__(self, images, labels):
         self.images = images
@@ -276,7 +280,7 @@ def train_model(train_loader):
     Parameters
     -----------
     train_loader: PyTorch tensor
-        The images to be trained on.
+        The images and labels.
 
     Returns
     --------
@@ -343,8 +347,7 @@ def validate_model(valid_loader):
     Parameters
     ----------
     valid_loader : Torch tensor
-        The validation data to run through the validation loop formatted as a 
-        Torch tensor object.
+        The images and labels.
 
     Returns 
     -------
@@ -388,25 +391,21 @@ def validate_model(valid_loader):
         accuracy = 100. * correct / len(valid_loader.dataset)
         
         # Calculate validation and recall for the epoch
-        prec_global,rec_global,fscore,support = precision_recall_fscore_support\
+        precision,recall,fscores,support = precision_recall_fscore_support\
                              (target,pred, average = 'micro', zero_division=1.0)
-        
-        precision = prec_global
-        recall = rec_global
-        fscores = fscore
 
     # Normalize validation loss from one epoch
     val_loss_norm = val_loss / len(valid_loader)
     
     return val_loss_norm, accuracy, precision, recall, fscores
 
-def main(path, metric_dir, data_type = 'None'):
+def main(path, metric_dir, data_type):
     '''Load, organize, and format data sets, and train a model on that data.
 
     Performs the following steps for a model:
     1. Calls organize_data to get all the processed data and puts them into 
     tuples for augmented and non-augmented data.
-    2. Uses a boolean to decide wether to use augmented or non-augmented data, 
+    2. Uses a boolean to decide whether to use augmented or non-augmented data, 
     and splits the datasets into x and y datasets for training, and validation 
     sets.
     3. Set the hyperparameters, and format the training and validation sets as
@@ -416,16 +415,15 @@ def main(path, metric_dir, data_type = 'None'):
     5. Save the training and validation evaluation metrics for each epoch of 
     training to csv files.
 
-    Parameters
+    Parameters 
     -----------
-    path : list
-        Identifies the directory that the csv file with the path to each image
-        is located in.
+    path : string
+        The directory that the images are stored in.
     metric_dir : string
-        The directory to save model evaluation metrics, data indices, and state
-        dictionaries to.
+        The directory to save the model's evaluation metrics to.
     data_type : string
-        The type of data that is being used to train the model. Default='None'
+        The type of data that the model will train on. Allowed values are 
+        'no_aug' and 'aug'.
 
     Returns
     --------
@@ -449,23 +447,18 @@ def main(path, metric_dir, data_type = 'None'):
         
         x_test = non_augmented_data[2]
         y_test = non_augmented_data[3]
-            
-    elif data_type == 'None':
-        raise('Please choose between augmented and non-augmented data')
-    else:
-        raise('Make sure you choose data type to use')
 
-    # for Model:
+    # Dimensions for Model:
     x_train_size = x_train.shape[0]
     x_test_size = x_test.shape[0]
     x_length = x_train.shape[1]
 
     print('x_length = ', x_length)
 
-    print('Image info being used:')
+    print('Image info being used in model:')
     print(x_train_size, x_test_size, x_length)
     
-    # format the dataset:
+    # Format the dataset:
     train_set = format_dataset(x_train, y_train, x_length)
     val_set = format_dataset(x_test, y_test, x_length)
     
@@ -494,60 +487,62 @@ def main(path, metric_dir, data_type = 'None'):
     # Track metrics:
     training_loss = []
     valid_loss = []
-        # accuracy
+    # Accuracy
     val_accuracy = []
     train_accuracy = []
-        # recall
+    # Recall
     val_recall = []
     train_recall = []
-        # precision
+    # Precision
     val_precision = []
     train_precision = []
-        # fscore
+    # fscore
     val_f1 = []
     train_f1 = []
-        # epoch time to train
+    # Epoch training time
     epoch_time = []
 
     # Training loop:
     for epoch in tqdm(range(num_epochs), total=num_epochs):
 
+        # Start recording time
         t0 = time.time()
         # Go through loops
         train_loss, train_acc, train_prec, train_rec, train_fscore = \
                                                        train_model(train_loader)
         val_loss, accuracy, precision, recall, fscores = \
                                                     validate_model(valid_loader)
+        # Stop recording time
         t1 = time.time()
 
-        # time for epoch
+        # Calculate time for the epoch
         dt = t1 - t0
         epoch_time.append(dt)
 
         # Append metrics
-            # loss
+        # Loss
         training_loss.append(train_loss)
         valid_loss.append(val_loss)
-            # accuracy
+        # Accuracy
         val_accuracy.append(accuracy)
         train_accuracy.append(train_acc)
-            # recall
+        # Recall
         val_recall.append(recall)
         train_recall.append(train_rec)
-            # Precision
+        # Precision
         val_precision.append(precision)
         train_precision.append(train_prec)
-            # fscore
+        # fscore
         val_f1.append(fscores)
         train_f1.append(train_fscore)
 
-        # Log
+        # Log training metrics
         print('Epoch {:.3f} - Train loss: {:.3f} - Val Loss: {:.3f} - Accuracy:\
                        ({:.0f}%)'.format(epoch, train_loss, val_loss, accuracy))
         
         # Every 10 epochs save model
         if (epoch % 10 == 0):
-            # save model to specified directory:
+            # Save model params to specified directory:
             torch.save(model.state_dict(), f'{metric_dir}/model_epoch{epoch}_\
                                                         {data_type}_{dtime}.pt')
 
@@ -587,7 +582,8 @@ if __name__ == '__main__':
         sub_array_size = 256
 
     else:
-        raise ValueError("Make sure to specify the type of data you want to use")
+        raise ValueError("Make sure to specify the type of data you want to \
+                                                    use ('aug' or 'non_aug').")
 
     #initialize model:
     model = Model(sub_array_size=sub_array_size)
