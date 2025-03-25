@@ -33,6 +33,7 @@ Here is a list of the available models with tutorials (all using
 - Variational Autoencoders
 - Dimensionality Reduction with PCA, t-SNE, and UMAP
 - Clustering with KMeans, GMMs, and HDBSCAN
+- Anomaly detection with LOF, iForest, and OC-SVM
 
 Installation
 ------------
